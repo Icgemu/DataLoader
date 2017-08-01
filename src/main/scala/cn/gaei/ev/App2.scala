@@ -54,7 +54,7 @@ object App2 {
     var type_map = Map("string" -> StringType, "int"-> IntegerType, "long" ->LongType,"float" -> DoubleType )
     val schema: Array[StructField] = schema_str.map(e => {
       val field_str: Array[String] = e.split("\\s+")
-      println(field_str(0) + "->" + field_str(1))
+//      println(field_str(0) + "->" + field_str(1))
       val field_name = field_str(0).toLowerCase.trim
       val field_type = field_str(1).toLowerCase.trim
       StructField(field_name, type_map(field_type), true)
@@ -84,26 +84,28 @@ object App2 {
 //    val schema = mpp.map(e=>e(0)).mkString(" ")
     val rdd = lines.map(line =>{
        val str:Array[String] = line.split(",")
-       var row = new ArrayBuffer[Any]()
-      for((x,i) <- str.view.zipWithIndex) {
-        val field_type = mpp[i](1)
-        val field = field_type match {
-          case "string" => x.trim();
-          case "long" => x.trim.toLong;
-          case "float" => x.toDouble;
-          case "int" => x.toInt;
-        }
-        row += (field)
-      }
-      Row.fromSeq(row.toSeq)
+//       var row = new ArrayBuffer[Any]()
+//      for((x,i) <- str.view.zipWithIndex) {
+//        val field_type = mpp[i](1)
+//        val field = field_type match {
+//          case "string" => x.trim();
+//          case "long" => x.trim.toLong;
+//          case "float" => x.toDouble;
+//          case "int" => x.toInt;
+//        }
+//        row ++= str
+//      }
+      Row.fromSeq(str.toSeq)
     })
     val spark = sc.newSession()
-    import spark.implicits._
-    spark.createDataFrame(rdd,StructType(schema))
-    file.write.mode(SaveMode.Append).parquet("hdfs://gaei/data/parquet/")
     // For implicit conversions like converting RDDs to DataFrames
-
-
+    import spark.implicits._
+    val file = spark.createDataFrame(rdd, StructType(schema))
+    file.printSchema()
+    file.write.mode(SaveMode.Append).parquet("hdfs://gaei/data/parquet/")
+    println("====================")
+    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
+    uniq.printSchema()
   }
 
 }
