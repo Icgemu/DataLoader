@@ -1,7 +1,9 @@
 package cn.gaei.ev
 
+import com.hadoop.mapreduce.LzoTextInputFormat
+import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
@@ -9,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * @author ${user.name}
   */
-object App {
+object App2 {
 
   def main(args: Array[String]): Unit = {
     //    val conf = new SparkConf()
@@ -48,7 +50,7 @@ object App {
     buff ++= "BCS_EBDFAULTST  INT,MCU_DCDC_ACTTEMP  FLOAT,BMS_HVILST  INT,HCU_HEVSYSREADYST  INT,BMS_BALANCEST  INT,"
     buff ++= "GPS_HEADING  FLOAT"
 
-    val schema_str = buff.toString().split(",")
+    val schema_str = buff.toString().toLowerCase.split(",")
     var type_map = Map("string" -> StringType, "int"-> IntegerType, "long" ->LongType,"float" -> DoubleType )
     val schema: Array[StructField] = schema_str.map(e => {
       val field_str: Array[String] = e.split("\\s+")
@@ -68,16 +70,36 @@ object App {
     //             StructField("cp_description",StringType,true),
     //             StructField("cp_type",StringType,true)))
 
-    val spark = SparkSession
+    val sc = SparkSession
       .builder()
       .appName("Spark SQL basic example")
       .config("spark.executor.memory", "4G")
       .config("spark.executor.cores", "4")
       .master("spark://master1:17077")
-      .getOrCreate().newSession()
+      .getOrCreate()
+
+    val lines = sc.sparkContext.newAPIHadoopFile("hdfs://gaei/data/uniq/2016/ag_vin_2016_01_uniq.csv.lzo",
+      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+    val mpp = schema_str.map(_.split("\\s+"))
+//    val schema = mpp.map(e=>e(0)).mkString(" ")
+    val rdd = lines.map(line =>{
+       val str:Array[String] = line.split(",")
+       var row = new ArrayBuffer[Any]()
+      for((x,i) <- str.view.zipWithIndex) {
+        val field_type = mpp[i](1)
+        val field = field_type match {
+          case "string" => x.trim();
+          case "long" => x.trim.toLong;
+          case "float" => x.toDouble;
+          case "int" => x.toInt;
+        }
+        row += (field)
+      }
+      Row.fromSeq(row.toSeq)
+    })
+    val spark = sc.newSession()
     import spark.implicits._
-    val file = spark.read.format("csv")
-      .schema(StructType(schema)).option("delimiter", ",").load("hdfs://gaei/data/uniq/2016/ag_vin_2016_01_uniq.csv.lzo")
+    spark.createDataFrame(rdd,StructType(schema))
     file.write.mode(SaveMode.Append).parquet("hdfs://gaei/data/parquet/")
     // For implicit conversions like converting RDDs to DataFrames
 

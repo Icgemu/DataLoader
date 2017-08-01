@@ -22,32 +22,51 @@
     <scala.compat.version>2.11</scala.compat.version>
   </properties>
 
+    <repositories>
+        <repository>
+            <id>scalaz</id>
+            <url>https://dl.bintray.com/scalaz-releases/maven/</url>
+        </repository>
+    </repositories>
   <dependencies>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Test -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.specs2</groupId>
-      <artifactId>specs2-core_${scala.compat.version}</artifactId>
-      <version>2.4.16</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_${scala.compat.version}</artifactId>
-      <version>2.2.4</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>junit</groupId>-->
+      <!--<artifactId>junit</artifactId>-->
+      <!--<version>4.11</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
+      <!--&lt;!&ndash; https://mvnrepository.com/artifact/org.scalaz.stream/scalaz-stream_2.11 &ndash;&gt;-->
+      <!--<dependency>-->
+          <!--<groupId>org.scalaz.stream</groupId>-->
+          <!--<artifactId>scalaz-stream_2.11</artifactId>-->
+          <!--<version>0.8.6</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+      <!--<groupId>org.specs2</groupId>-->
+      <!--<artifactId>specs2_${scala.compat.version}</artifactId>-->
+      <!--<version>2.4.16</version>-->
+      <!--<scope>test</scope>-->
+          <!--<exclusions>-->
+              <!--<exclusion>-->
+                  <!--<groupId>org.scalaz.stream</groupId>-->
+                  <!--<artifactId>scalaz-stream_2.11</artifactId>-->
+              <!--</exclusion>-->
+          <!--</exclusions>-->
+    <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>org.scalatest</groupId>-->
+      <!--<artifactId>scalatest_${scala.compat.version}</artifactId>-->
+      <!--<version>2.2.4</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
     <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.11 -->
     <dependency>
@@ -92,7 +111,6 @@
           <execution>
             <goals>
               <goal>compile</goal>
-              <goal>testCompile</goal>
             </goals>
             <configuration>
               <args>
@@ -103,21 +121,34 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.18.1</version>
-        <configuration>
-          <useFile>false</useFile>
-          <disableXmlReport>true</disableXmlReport>
-          <!-- If you have classpath issue like NoDefClassError,... -->
-          <!-- useManifestOnlyJar>false</useManifestOnlyJar -->
-          <includes>
-            <include>**/*Test.*</include>
-            <include>**/*Suite.*</include>
-          </includes>
-        </configuration>
-      </plugin>
+      <!--<plugin>-->
+        <!--<groupId>org.apache.maven.plugins</groupId>-->
+        <!--<artifactId>maven-surefire-plugin</artifactId>-->
+        <!--<version>2.18.1</version>-->
+        <!--<configuration>-->
+          <!--<useFile>false</useFile>-->
+          <!--<disableXmlReport>true</disableXmlReport>-->
+          <!--&lt;!&ndash; If you have classpath issue like NoDefClassError,... &ndash;&gt;-->
+          <!--&lt;!&ndash; useManifestOnlyJar>false</useManifestOnlyJar &ndash;&gt;-->
+          <!--<includes>-->
+            <!--<include>**/*Test.*</include>-->
+            <!--<include>**/*Suite.*</include>-->
+          <!--</includes>-->
+        <!--</configuration>-->
+      <!--</plugin>-->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <addClasspath>true</addClasspath>
+                        <classpathPrefix>lib/</classpathPrefix>
+                        <mainClass>cn.gaei.ev.App</mainClass>
+                    </manifest>
+                </archive>
+            </configuration>
+        </plugin>
     </plugins>
   </build>
 </project>
