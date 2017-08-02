@@ -2,11 +2,13 @@ package cn.gaei.ev
 
 import com.hadoop.mapreduce.LzoTextInputFormat
 import org.apache.hadoop.io.{LongWritable, Text}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.{Success, Try}
 
 /**
   * @author ${user.name}
@@ -74,38 +76,88 @@ object App2 {
       .builder()
       .appName("Spark SQL basic example")
       .config("spark.executor.memory", "4G")
-      .config("spark.executor.cores", "4")
+      .config("spark.executor.cores", "2")
       .master("spark://master1:17077")
       .getOrCreate()
 
-    val lines = sc.sparkContext.newAPIHadoopFile("hdfs://gaei/data/uniq/2016/ag_vin_2016_01_uniq.csv.lzo",
+    var lines = sc.sparkContext.newAPIHadoopFile("hdfs://gaei/data/uniq/*/*",
       classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+
+    lines = lines.coalesce(24)
     val mpp = schema_str.map(_.split("\\s+"))
 //    val schema = mpp.map(e=>e(0)).mkString(" ")
-    val rdd = lines.map(line =>{
-       val str:Array[String] = line.split(",")
-//       var row = new ArrayBuffer[Any]()
-//      for((x,i) <- str.view.zipWithIndex) {
-//        val field_type = mpp[i](1)
-//        val field = field_type match {
-//          case "string" => x.trim();
-//          case "long" => x.trim.toLong;
-//          case "float" => x.toDouble;
-//          case "int" => x.toInt;
-//        }
-//        row ++= str
+    var newRdd = lines.map(_.split(",",86)).filter(_.length == 86)
+    var errRdd = lines.map(_.split(",",86)).filter(_.length != 86)
+    var rdd = newRdd.map(str =>{
+       //val str:Array[String] = line.split(",",86)
+       val row = new ArrayBuffer[Any]()
+      for(item <- str.zipWithIndex) {
+        val (x ,ind) = item
+        if(ind < 85) {
+          val field_type = mpp(ind)(1)
+          val field = field_type match {
+            case "string" => toString(x)
+            case "long" => toLong(x)
+            case "float" => toDouble(x)
+            case "int" => toInt(x)
+            case _ => Try(new Exception(" unknown  data type"))
+          }
+          if(field.isSuccess)
+            row.append(field.get)
+        }
+      }
+//      val success = row.filter(e => e.isSuccess)
+//      if(success.length == 85){
+//        Try(Row.fromSeq(row.map(e=>e.get).toSeq))
+//      } else {
+//        Try(new Exception(str.mkString(",")))
 //      }
-      Row.fromSeq(str.toSeq)
+//      println("row+."+row.length)
+      Row.fromSeq(row.toSeq)
     })
+
+    val nrdd = rdd.filter( _.length == 85)
+    val erdd = rdd.filter( _.length != 85)
+//    rdd.take(10).map( r => println(r.length +"=>" +r))
     val spark = sc.newSession()
     // For implicit conversions like converting RDDs to DataFrames
     import spark.implicits._
-    val file = spark.createDataFrame(rdd, StructType(schema))
-    file.printSchema()
-    file.write.mode(SaveMode.Append).parquet("hdfs://gaei/data/parquet/")
-    println("====================")
-    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
-    uniq.printSchema()
+    val file = spark.createDataFrame(nrdd, StructType(schema))
+//    file.printSchema()
+    file.write.mode(SaveMode.Append).save("hdfs://gaei/data/parquet/")
+//    println("====================")
+//    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
+//    uniq.printSchema()
+    errRdd.repartition(1).saveAsTextFile("hdfs://gaei/data/err1/")
+    erdd.repartition(1).saveAsTextFile("hdfs://gaei/data/err2/")
+  }
+
+  def toInt(s: String): Try[Any] = {
+    if(s.isEmpty){
+      Try(null)
+    }else{
+      Try(s.toInt)
+    }
+  }
+
+  def toLong(s: String): Try[Any] = {
+    if(s.isEmpty){
+      Try(null)
+    }else{
+      Try(s.toLong)
+    }
+  }
+
+  def toDouble(s: String): Try[Any] = {
+    if(s.isEmpty){
+      Try(null)
+    }else{
+      Try(s.toDouble)
+    }
+  }
+
+  def toString(s: String): Try[Any] = {
+    Try(s.trim)
   }
 
 }
