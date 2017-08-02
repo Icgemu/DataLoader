@@ -2,6 +2,7 @@ package cn.gaei.ev
 
 import com.hadoop.mapreduce.LzoTextInputFormat
 import org.apache.hadoop.io.{LongWritable, Text}
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
@@ -77,13 +78,13 @@ object App2 {
       .appName("Spark SQL basic example")
       .config("spark.executor.memory", "4G")
       .config("spark.executor.cores", "2")
-      .master("spark://master1:17077")
+      .master("spark://fushengrongdeMacBook-Pro.local:7077")
       .getOrCreate()
 
-    var lines = sc.sparkContext.newAPIHadoopFile("hdfs://gaei/data/uniq/*/*",
-      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+    var lines = sc.sparkContext.newAPIHadoopFile("hdfs://localhost:9000/data/test/ag_vin_2016_02_test.csv",
+      classOf[TextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
 
-    lines = lines.coalesce(24)
+    lines = lines.coalesce(1)
     val mpp = schema_str.map(_.split("\\s+"))
 //    val schema = mpp.map(e=>e(0)).mkString(" ")
     var newRdd = lines.map(_.split(",",86)).filter(_.length == 86)
@@ -124,12 +125,12 @@ object App2 {
     import spark.implicits._
     val file = spark.createDataFrame(nrdd, StructType(schema))
 //    file.printSchema()
-    file.write.mode(SaveMode.Append).save("hdfs://gaei/data/parquet/")
+    file.write.mode(SaveMode.Append).save("hdfs://localhost:9000/data/parquet/")
 //    println("====================")
 //    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
 //    uniq.printSchema()
-    errRdd.repartition(1).saveAsTextFile("hdfs://gaei/data/err1/")
-    erdd.repartition(1).saveAsTextFile("hdfs://gaei/data/err2/")
+    errRdd.repartition(1).map(_.mkString(",")).saveAsTextFile("hdfs://localhost:9000/data/err1/")
+    erdd.repartition(1).map(_.mkString(",")).saveAsTextFile("hdfs://localhost:9000/data/err2/")
   }
 
   def toInt(s: String): Try[Any] = {
