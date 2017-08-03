@@ -28,6 +28,10 @@ object App2 {
     //    val file = sc.textFile("hdfs://gaei/data/uniq/*/*")
 
     //    println(file.count
+    val patitions = args(3).toInt
+    val input = args(0)
+    val parquetFile = args(1)
+    val errFile = args(2)
     val buff = new StringBuilder
 
     buff ++= "VIN  STRING ,TS LONG,DATE_STR STRING,BMS_BATTST INT,BMS_BATTCURR  FLOAT,"
@@ -78,87 +82,89 @@ object App2 {
       .appName("Spark SQL basic example")
       .config("spark.executor.memory", "4G")
       .config("spark.executor.cores", "2")
-      .master("spark://fushengrongdeMacBook-Pro.local:7077")
+      //.master("spark://fushengrongdeMacBook-Pro.local:7077")
+      .master("spark://master1:17077")
       .getOrCreate()
 
-    var lines = sc.sparkContext.newAPIHadoopFile("hdfs://localhost:9000/data/test/ag_vin_2016_02_test.csv",
-      classOf[TextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+    var lines = sc.sparkContext.newAPIHadoopFile(input,
+      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
 
-    lines = lines.coalesce(1)
+    lines = lines.coalesce(patitions)
     val mpp = schema_str.map(_.split("\\s+"))
 //    val schema = mpp.map(e=>e(0)).mkString(" ")
-    var newRdd = lines.map(_.split(",",86)).filter(_.length == 86)
-    var errRdd = lines.map(_.split(",",86)).filter(_.length != 86)
-    var rdd = newRdd.map(str =>{
-       //val str:Array[String] = line.split(",",86)
-       val row = new ArrayBuffer[Any]()
-      for(item <- str.zipWithIndex) {
-        val (x ,ind) = item
-        if(ind < 85) {
+    //val newRdd = lines.map(_.split(",",87)).filter(_.length == 86)
+    //val errRdd = lines.map(_.split(",",87)).filter(_.length != 86)
+//    val rdd = newRdd.map(f = str => {
+    val rdd = lines.map(line => {
+      val str:Array[String] = line.split(",",86)
+      val row = new ArrayBuffer[Any]()
+      for (item <- str.zipWithIndex) {
+        val (x, ind) = item
+        if (ind < 85) {
           val field_type = mpp(ind)(1)
           val field = field_type match {
-            case "string" => toString(x)
-            case "long" => toLong(x)
-            case "float" => toDouble(x)
-            case "int" => toInt(x)
-            case _ => Try(new Exception(" unknown  data type"))
+            case "string" => if(x.isEmpty) null else x.trim
+            case "long" => if(x.isEmpty) null else x.toLong
+            case "float" => if(x.isEmpty) null else x.toDouble
+            case "int" => if(x.isEmpty) null else x.toDouble.toInt
           }
-          if(field.isSuccess)
-            row.append(field.get)
+          row.append(field)
+//          if (field.isSuccess)
+//            row.append(field.get)
         }
       }
-//      val success = row.filter(e => e.isSuccess)
-//      if(success.length == 85){
-//        Try(Row.fromSeq(row.map(e=>e.get).toSeq))
-//      } else {
-//        Try(new Exception(str.mkString(",")))
-//      }
-//      println("row+."+row.length)
+      //      val success = row.filter(e => e.isSuccess)
+      //      if(success.length == 85){
+      //        Try(Row.fromSeq(row.map(e=>e.get).toSeq))
+      //      } else {
+      //        Try(new Exception(str.mkString(",")))
+      //      }
+      //      println("row+."+row.length)
       Row.fromSeq(row.toSeq)
     })
 
-    val nrdd = rdd.filter( _.length == 85)
-    val erdd = rdd.filter( _.length != 85)
+//    val nrdd = rdd.filter( _.length == 85)
+//    val erdd = rdd.filter( _.length != 85)
 //    rdd.take(10).map( r => println(r.length +"=>" +r))
     val spark = sc.newSession()
     // For implicit conversions like converting RDDs to DataFrames
     import spark.implicits._
-    val file = spark.createDataFrame(nrdd, StructType(schema))
+    val file = spark.createDataFrame(rdd, StructType(schema))
 //    file.printSchema()
-    file.write.mode(SaveMode.Append).save("hdfs://localhost:9000/data/parquet/")
+    file.write.mode(SaveMode.Append).save(parquetFile)
 //    println("====================")
 //    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
 //    uniq.printSchema()
-    errRdd.repartition(1).map(_.mkString(",")).saveAsTextFile("hdfs://localhost:9000/data/err1/")
-    erdd.repartition(1).map(_.mkString(",")).saveAsTextFile("hdfs://localhost:9000/data/err2/")
+//    errRdd.repartition(6).map(_.mkString(",")).saveAsTextFile(errFile)
+//    erdd.repartition(6).map(_.mkString(",")).saveAsTextFile("/data/err2/")
   }
 
-  def toInt(s: String): Try[Any] = {
-    if(s.isEmpty){
-      Try(null)
-    }else{
-      Try(s.toInt)
-    }
-  }
-
-  def toLong(s: String): Try[Any] = {
-    if(s.isEmpty){
-      Try(null)
-    }else{
-      Try(s.toLong)
-    }
-  }
-
-  def toDouble(s: String): Try[Any] = {
-    if(s.isEmpty){
-      Try(null)
-    }else{
-      Try(s.toDouble)
-    }
-  }
-
-  def toString(s: String): Try[Any] = {
-    Try(s.trim)
-  }
+//  def toInt(s: String): Try[Any] = {
+//    if(s.isEmpty){
+//      Try(null)
+//    }else{
+//      Try(s.toInt)
+//    }
+//  }
+//
+//  def toLong(s: String): Try[Any] = {
+//    if(s.isEmpty){
+//      Try(null)
+//    }else{
+//      Try(s.toLong)
+//    }
+//  }
+//
+//  def toDouble(s: String): Try[Any] = {
+//    if(s.isEmpty){
+//      Try(null)
+//    }else{
+//      Try(s.toDouble)
+//    }
+//  }
+//
+//  def toString(s: String): Try[Any] = {
+//    Try(s.trim)
+//  }
 
 }
