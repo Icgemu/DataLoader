@@ -131,7 +131,8 @@ object LzoToParquet {
     import spark.implicits._
     val file = spark.createDataFrame(rdd, StructType(schema))
 //    file.printSchema()
-    file.write.mode(SaveMode.Append).save(parquetFile)
+    file.filter($"lat02".lt(0) || $"lat02" > 90)
+      .write.mode(SaveMode.Append).save(parquetFile)
 //    println("====================")
 //    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
 //    uniq.printSchema()
