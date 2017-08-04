@@ -21,7 +21,7 @@ object GeohashCal {
       val city = line.split(",")(1)
       mapping += (code -> city)
     }
-    println(mapping.mkString)
+//    println(mapping.mkString)
     source.close
 
     val sc = SparkSession
@@ -41,8 +41,11 @@ object GeohashCal {
     spark.udf.register("geo", (lon: Double, lat: Double) =>{
       val r = Try(GeoHash.geoHashStringWithCharacterPrecision(lat,lon,5))
       if(r.isSuccess) {
-        val v = broadcastVar.value(r.get)
-        if(v.)
+        var v = broadcastVar.value(r.get)
+        if(!broadcastVar.value.contains(r.get)){
+          v = "NULL"
+        }
+        v
       } else "NULL"
     })
 
