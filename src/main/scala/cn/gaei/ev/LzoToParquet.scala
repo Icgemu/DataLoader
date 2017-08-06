@@ -62,14 +62,16 @@ object LzoToParquet {
       .appName("Spark SQL basic example")
       .config("spark.executor.memory", "4G")
       .config("spark.executor.cores", "2")
-      //.master("spark://fushengrongdeMacBook-Pro.local:7077")
-      .master("spark://master1:17077")
+      .master("spark://fushengrongdeMacBook-Pro.local:7077")
+//      .master("spark://master1:17077")
       .getOrCreate()
 
     var lines = sc.sparkContext.newAPIHadoopFile(input,
-      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+//      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+      classOf[TextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
 
-    lines = lines.coalesce(patitions)
+
+      lines = lines.coalesce(patitions)
     val mpp = schema_str.map(_.split("\\s+"))
 //    val rdd = newRdd.map(f = str => {
     val rdd = lines.map(line => {
@@ -91,13 +93,15 @@ object LzoToParquet {
       Row.fromSeq(row.toSeq)
     })
 
+
     val spark = sc.newSession()
     // For implicit conversions like converting RDDs to DataFrames
     import spark.implicits._
     val file = spark.createDataFrame(rdd, StructType(schema))
+    file.withColumn("year",$"date_str".substr(0,4)).withColumn("month",$"date_str".substr(5,2))
 //    file.printSchema()
-    file.filter($"lat02".lt(0) || $"lat02" > 90)
-      .write.mode(SaveMode.Append).save(parquetFile)
+      .filter($"lat02".gt(0) || $"lat02" < 90)
+      .write.mode(SaveMode.Append).partitionBy("year","month").parquet(parquetFile)
   }
 
 }
