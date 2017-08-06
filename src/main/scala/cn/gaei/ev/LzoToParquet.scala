@@ -17,17 +17,7 @@ import scala.util.{Success, Try}
 object LzoToParquet {
 
   def main(args: Array[String]): Unit = {
-    //    val conf = new SparkConf()
-    //      .setMaster("spark://master1:17077")
-    //      .setAppName("CountingSheep")
-    //      .set("spark.executor.memory","4G")
-    //      .set("spark.executor.cores","4")
-    //      .set("spark.cores.max","20")
-    //    val sc = new SparkContext(conf)
 
-    //    val file = sc.textFile("hdfs://gaei/data/uniq/*/*")
-
-    //    println(file.count
     val patitions = args(3).toInt
     val input = args(0)
     val parquetFile = args(1)
@@ -66,16 +56,6 @@ object LzoToParquet {
       val field_type = field_str(1).toLowerCase.trim
       StructField(field_name, type_map(field_type), true)
     })
-    //    val buff = new ArrayBuffer()
-    //    val schema= StructType(Array(
-    //             StructField("cp_catalog_page_sk",IntegerType,false),
-    //             StructField("cp_start_date_sk",IntegerType,true),
-    //             StructField("cp_end_date_sk",IntegerType,true),
-    //             StructField("cp_department",StringType,true),
-    //             StructField("cp_catalog_number",LongType,true),
-    //             StructField("cp_catalog_page_number",LongType,true),
-    //             StructField("cp_description",StringType,true),
-    //             StructField("cp_type",StringType,true)))
 
     val sc = SparkSession
       .builder()
@@ -91,9 +71,6 @@ object LzoToParquet {
 
     lines = lines.coalesce(patitions)
     val mpp = schema_str.map(_.split("\\s+"))
-//    val schema = mpp.map(e=>e(0)).mkString(" ")
-    //val newRdd = lines.map(_.split(",",87)).filter(_.length == 86)
-    //val errRdd = lines.map(_.split(",",87)).filter(_.length != 86)
 //    val rdd = newRdd.map(f = str => {
     val rdd = lines.map(line => {
       val str:Array[String] = line.split(",",86)
@@ -109,23 +86,11 @@ object LzoToParquet {
             case "int" => if(x.isEmpty) null else x.toDouble.toInt
           }
           row.append(field)
-//          if (field.isSuccess)
-//            row.append(field.get)
         }
       }
-      //      val success = row.filter(e => e.isSuccess)
-      //      if(success.length == 85){
-      //        Try(Row.fromSeq(row.map(e=>e.get).toSeq))
-      //      } else {
-      //        Try(new Exception(str.mkString(",")))
-      //      }
-      //      println("row+."+row.length)
       Row.fromSeq(row.toSeq)
     })
 
-//    val nrdd = rdd.filter( _.length == 85)
-//    val erdd = rdd.filter( _.length != 85)
-//    rdd.take(10).map( r => println(r.length +"=>" +r))
     val spark = sc.newSession()
     // For implicit conversions like converting RDDs to DataFrames
     import spark.implicits._
@@ -133,39 +98,6 @@ object LzoToParquet {
 //    file.printSchema()
     file.filter($"lat02".lt(0) || $"lat02" > 90)
       .write.mode(SaveMode.Append).save(parquetFile)
-//    println("====================")
-//    val uniq = spark.read.parquet("hdfs://gaei/data/parquet/")
-//    uniq.printSchema()
-//    errRdd.repartition(6).map(_.mkString(",")).saveAsTextFile(errFile)
-//    erdd.repartition(6).map(_.mkString(",")).saveAsTextFile("/data/err2/")
   }
-
-//  def toInt(s: String): Try[Any] = {
-//    if(s.isEmpty){
-//      Try(null)
-//    }else{
-//      Try(s.toInt)
-//    }
-//  }
-//
-//  def toLong(s: String): Try[Any] = {
-//    if(s.isEmpty){
-//      Try(null)
-//    }else{
-//      Try(s.toLong)
-//    }
-//  }
-//
-//  def toDouble(s: String): Try[Any] = {
-//    if(s.isEmpty){
-//      Try(null)
-//    }else{
-//      Try(s.toDouble)
-//    }
-//  }
-//
-//  def toString(s: String): Try[Any] = {
-//    Try(s.trim)
-//  }
 
 }
