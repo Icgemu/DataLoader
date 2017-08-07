@@ -2,9 +2,11 @@ package cn.gaei.ev
 import java.io.PrintWriter
 
 import ch.hsr.geohash.GeoHash
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.Aggregator
+import org.apache.spark.sql.{Encoder, Encoders, Row, SparkSession}
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.util.Try
 /**
@@ -21,7 +23,7 @@ object GeohashCal {
       val city = line.split(",")(1)
       mapping += (code -> city)
     }
-    println(mapping.mkString)
+//    println(mapping.mkString)
     source.close
 
     val sc = SparkSession
@@ -40,22 +42,29 @@ object GeohashCal {
 
     spark.udf.register("geo", (lon: Double, lat: Double) =>{
       val r = Try(GeoHash.geoHashStringWithCharacterPrecision(lat,lon,5))
+      var v = "NULL"
       if(r.isSuccess) {
-        val v = broadcastVar.value(r.get)
-//        if(v.)
-      } else "NULL"
+        if(broadcastVar.value.contains(r.get)) {
+          v = broadcastVar.value(r.get)
+        }
+      }
+      v
     })
 
     val writer = new PrintWriter("geo.csv")
     var file = spark.read.parquet("/data/parquet")
-    file = file
-      .filter($"lon02".gt(0) && $"bms_batttempmax".isNotNull)
+    val file1 = file
+      .filter($"lon02".gt(0) && $"bms_batttempmax".gt(-40.0))
       .select($"vin",$"date_str",$"bms_batttempmax",callUDF("geo",$"lon02",$"lat02").as("city"))
-    file
-      .groupBy($"city",$"date_str")
-      .agg(max($"bms_batttempmax").as("max"), avg($"bms_batttempmax").as("avg"),count("*").as("count"))
-      .sort($"city", $"date_str")
+    file1
+//      .groupBy($"city",$"date_str")
+      .groupBy($"city",$"vin",$"date_str")
+      .agg(max($"bms_batttempmax").as("max"), avg($"bms_batttempmax").as("avg"),MedianAgg.toColumn.name("median"),count("*").as("count"))
+      .sort($"city",$"vin", $"date_str")
       .collect().foreach(e => writer.println(e.mkString(",")))
     writer.close()
   }
 }
+
+
+
