@@ -18,7 +18,7 @@ object MapGeoHashToCityID {
   def main(args: Array[String]): Unit = {
     var i = 1;
     val id_to_map = new PrintWriter("id-to-city.csv")
-    for(d <- subDir(new File("D:\\map\\bound\\china"))){
+    for(d <- subDir(new File("bound\\china"))){
       geoRead(d, i)
       val province = d.getParentFile.getName
       val city = d.getName.replace(".txt","")
