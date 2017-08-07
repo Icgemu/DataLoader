@@ -42,7 +42,7 @@ object GeohashCal {
       val r = Try(GeoHash.geoHashStringWithCharacterPrecision(lat,lon,5))
       if(r.isSuccess) {
         val v = broadcastVar.value(r.get)
-        if(v.)
+//        if(v.)
       } else "NULL"
     })
 
