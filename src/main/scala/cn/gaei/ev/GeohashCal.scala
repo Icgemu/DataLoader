@@ -50,17 +50,35 @@ object GeohashCal {
       }
       v
     })
-
-    val writer = new PrintWriter("geo.csv")
+    spark.udf.register("median", (e:Seq[Double]) =>{
+      val all = e.sorted
+      val count = all.size
+      if(count % 2 != 0){
+        all((count / 2))
+      }else{
+        val a = ((count-1) / 2)
+        val b = a+1
+        (all(b) + all(a))/2
+      }
+    })
+//    spark.udf.register("mediann", UntypedMedianAgg)
+    val writer = new PrintWriter("geo-2.csv")
     var file = spark.read.parquet("/data/parquet")
     val file1 = file
-      .filter($"lon02".gt(0) && $"bms_batttempmax".gt(-40.0))
-      .select($"vin",$"date_str",$"bms_batttempmax",callUDF("geo",$"lon02",$"lat02").as("city"))
+//      .filter($"lon02".gt(0) && $"bms_batttempmax".gt(-40.0))
+      .filter($"lon02".gt(0) && $"bms_batttempmin".gt(-40.0))
+//      .select($"vin",$"date_str",$"bms_batttempmax",callUDF("geo",$"lon02",$"lat02").as("city"))
+      .select($"vin",$"date_str",$"bms_batttempmin",callUDF("geo",$"lon02",$"lat02").as("city"))
     file1
-//      .groupBy($"city",$"date_str")
-      .groupBy($"city",$"vin",$"date_str")
-      .agg(max($"bms_batttempmax").as("max"), avg($"bms_batttempmax").as("avg"),MedianAgg.toColumn.name("median"),count("*").as("count"))
-      .sort($"city",$"vin", $"date_str")
+      .groupBy($"city",$"date_str")
+//      .groupBy($"city",$"vin",$"date_str")
+//      .agg(max($"bms_batttempmax").as("max"),MedianAgg.toColumn.name("median"),count("*").as("count"))
+      //.agg(min($"bms_batttempmin").as("min"),MedianAgg.toColumn.name("median"),count("*").as("count"))
+//      .agg(min($"bms_batttempmin").as("min"),callUDF("median",$"bms_batttempmin") as("median"),count("*").as("count"))
+      .agg(min($"bms_batttempmin").as("min"),collect_list($"bms_batttempmin").as("median_list"),count("*").as("count"))
+        .select($"city",$"date_str",$"min",callUDF("median",$"median_list").as("median"),$"count")
+//      .sort($"city",$"vin", $"date_str")
+      .sort($"city", $"date_str")
       .collect().foreach(e => writer.println(e.mkString(",")))
     writer.close()
   }

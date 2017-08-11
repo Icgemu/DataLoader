@@ -1,6 +1,7 @@
 package cn.gaei.ev
 
 import java.io.{File, PrintWriter}
+import java.nio.charset.Charset
 
 import ch.hsr.geohash.GeoHash
 
@@ -17,7 +18,7 @@ object MapGeoHashToCityID {
   var mapping = Map[Int,Geometry]()
   def main(args: Array[String]): Unit = {
     var i = 1;
-    val id_to_map = new PrintWriter("id-to-city.csv")
+    val id_to_map = new PrintWriter("id-to-city.csv","UTF-8")
     for(d <- subDir(new File("bound\\china"))){
       geoRead(d, i)
       val province = d.getParentFile.getName
@@ -27,9 +28,9 @@ object MapGeoHashToCityID {
     }
     id_to_map.close()
 
-    val source = Source.fromFile("geo.csv")
+    val source = Source.fromFile("geo.csv","UTF-8")
     val lines = source.getLines
-    val writer = new PrintWriter("geo-map.csv")
+    val writer = new PrintWriter("geo-map.csv","UTF-8")
     for(line <- lines){
       val code = line.split(",")(0)
       if("NULL"  != code ) {
@@ -56,7 +57,7 @@ object MapGeoHashToCityID {
 //    val city = f.getName.replace(".txt","")
     if("china" != province){
 
-      val source = Source.fromFile(f)
+      val source = Source.fromFile(f,"UTF-8")
       val str = source.mkString
 //      println(str)
       if(!str.trim.isEmpty) {
