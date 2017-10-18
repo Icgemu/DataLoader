@@ -18,10 +18,11 @@ object LzoToParquet {
 
   def main(args: Array[String]): Unit = {
 
-    val patitions = args(3).toInt
+    val numPatitions = args(2).toInt
+    val mem = args(3).toInt
+    val core = args(4).toInt
     val input = args(0)
-    val parquetFile = args(1)
-    val errFile = args(2)
+    val saveDir = args(1)
     val buff = new StringBuilder
 
     buff ++= "VIN  STRING ,TS LONG,DATE_STR STRING,BMS_BATTST INT,BMS_BATTCURR  FLOAT,"
@@ -48,10 +49,10 @@ object LzoToParquet {
     buff ++= "GPS_HEADING  FLOAT"
 
     val schema_str = buff.toString().toLowerCase.split(",")
-    var type_map = Map("string" -> StringType, "int"-> IntegerType, "long" ->LongType,"float" -> DoubleType )
+    var type_map = Map("string" -> StringType, "int" -> IntegerType, "long" -> LongType, "float" -> DoubleType)
     val schema: Array[StructField] = schema_str.map(e => {
       val field_str: Array[String] = e.split("\\s+")
-//      println(field_str(0) + "->" + field_str(1))
+      //      println(field_str(0) + "->" + field_str(1))
       val field_name = field_str(0).toLowerCase.trim
       val field_type = field_str(1).toLowerCase.trim
       StructField(field_name, type_map(field_type), true)
@@ -60,32 +61,33 @@ object LzoToParquet {
     val sc = SparkSession
       .builder()
       .appName("Spark SQL basic example")
-      .config("spark.executor.memory", "4G")
-      .config("spark.executor.cores", "2")
-      .master("spark://fushengrongdeMacBook-Pro.local:7077")
-//      .master("spark://master1:17077")
+      .config("spark.executor.memory", mem+"G")
+      .config("spark.executor.cores", core)
+      .config("spark.shuffle.spill.numElementsForceSpillThreshold", 1024 * 1024 * 1024 / 16)//1G
+//      .master("spark://fushengrongdeMacBook-Pro.local:7077")
+      //      .master("spark://master1:17077")
       .getOrCreate()
 
     var lines = sc.sparkContext.newAPIHadoopFile(input,
-//      classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
-      classOf[TextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+            classOf[LzoTextInputFormat],classOf[LongWritable],classOf[Text]).map(_._2.toString)
+//      classOf[TextInputFormat], classOf[LongWritable], classOf[Text]).map(_._2.toString)
 
 
-      lines = lines.coalesce(patitions)
+    lines = lines.coalesce(numPatitions)
     val mpp = schema_str.map(_.split("\\s+"))
-//    val rdd = newRdd.map(f = str => {
+    //    val rdd = newRdd.map(f = str => {
     val rdd = lines.map(line => {
-      val str:Array[String] = line.split(",",86)
+      val str: Array[String] = line.split(",", 86)
       val row = new ArrayBuffer[Any]()
       for (item <- str.zipWithIndex) {
         val (x, ind) = item
         if (ind < 85) {
           val field_type = mpp(ind)(1)
           val field = field_type match {
-            case "string" => if(x.isEmpty) null else x.trim
-            case "long" => if(x.isEmpty) null else x.toLong
-            case "float" => if(x.isEmpty) null else x.toDouble
-            case "int" => if(x.isEmpty) null else x.toDouble.toInt
+            case "string" => if (x.isEmpty) null else x.trim
+            case "long" => if (x.isEmpty) null else x.toLong
+            case "float" => if (x.isEmpty) null else x.toDouble
+            case "int" => if (x.isEmpty) null else x.toDouble.toInt
           }
           row.append(field)
         }
@@ -97,11 +99,13 @@ object LzoToParquet {
     val spark = sc.newSession()
     // For implicit conversions like converting RDDs to DataFrames
     import spark.implicits._
+    spark.read.textFile()
     val file = spark.createDataFrame(rdd, StructType(schema))
-    file.withColumn("year",$"date_str".substr(0,4)).withColumn("month",$"date_str".substr(5,2))
-//    file.printSchema()
-      .filter($"lat02".gt(0) || $"lat02" < 90)
-      .write.mode(SaveMode.Append).partitionBy("year","month").parquet(parquetFile)
+    file.withColumn("year", $"date_str".substr(0, 4)).withColumn("month", $"date_str".substr(5, 2))
+      //    file.printSchema()
+//      .filter($"lat02".gt(0) || $"lat02" < 90)
+      .repartition(numPatitions)
+      .write.mode(SaveMode.Append).partitionBy("year", "month").parquet(saveDir)
   }
 
 }

@@ -68,7 +68,7 @@ object GeohashCal {
 //      .filter($"lon02".gt(0) && $"bms_batttempmax".gt(-40.0))
       .filter($"lon02".gt(0) && $"bms_batttempmin".gt(-40.0))
 //      .select($"vin",$"date_str",$"bms_batttempmax",callUDF("geo",$"lon02",$"lat02").as("city"))
-      .select($"vin",$"date_str",$"bms_batttempmin",callUDF("geo",$"lon02",$"lat02").as("city"))
+      .select($"vin",$"date_str",$"bms_batttempmin",callUDF("geo",$"lon84",$"lat84").as("city"))
     file1
       .groupBy($"city",$"date_str")
 //      .groupBy($"city",$"vin",$"date_str")
