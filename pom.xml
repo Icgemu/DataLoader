@@ -27,7 +27,13 @@
             <id>gt</id>
             <url>https://repo.boundlessgeo.com/main/</url>
         </repository>
+        <repository>
+            <id>sonatype-oss</id>
+            <url>http://oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
     </repositories>
+
   <dependencies>
     <dependency>
       <groupId>org.scala-lang</groupId>
@@ -148,6 +154,29 @@
           <!--<artifactId>jts</artifactId>-->
           <!--<version>1.13</version>-->
       <!--</dependency>-->
+    <!-- https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch-hadoop -->
+      <!-- https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch-hadoop -->
+      <dependency>
+          <groupId>org.elasticsearch</groupId>
+          <artifactId>elasticsearch-spark-20_2.11</artifactId>
+          <version>5.5.2</version>
+          <exclusions>
+              <exclusion>
+                  <artifactId>scala-library</artifactId>
+                  <groupId>org.scala-lang</groupId>
+              </exclusion>
+              <exclusion>
+                  <artifactId>spark-sql_2.11</artifactId>
+                  <groupId>org.apache.spark</groupId>
+              </exclusion>
+              <exclusion>
+                  <artifactId>spark-streaming_2.11</artifactId>
+                  <groupId>org.apache.spark</groupId>
+              </exclusion>
+          </exclusions>
+      </dependency>
+
+
 
   </dependencies>
 

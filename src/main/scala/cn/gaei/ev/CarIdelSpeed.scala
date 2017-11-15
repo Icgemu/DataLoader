@@ -62,7 +62,8 @@ object CarIdelSpeed {
 
     val orig = spark.read.parquet(inputorig).filter($"bcm_keyst".equalTo(2)).select($"vin", $"ts",$"bcm_keyst",$"bcs_vehspd",$"ems_engspd")
       .withColumn("car_type", callUDF("car_type",$"vin"))
-      .filter($"car_type".notEqual(2) && $"year".equalTo(year) && $"month".equalTo(month) && ($"ccs_chargerstartst".equalTo(1) || ($"ccs_chargerstartst".isNull)))
+      .filter($"car_type".notEqual(2) && $"year".equalTo(year) && $"month".equalTo(month))
+      .filter($"ccs_chargerstartst".equalTo(1) || ($"ccs_chargerstartst".isNull))
 
 
     //all
